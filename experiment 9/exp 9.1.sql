@@ -3,21 +3,20 @@
 --  with a specific message
 
 
-CREATE OR REPLACE TRIGGER check_salary_hike
-BEFORE UPDATE OF salary ON Salary_Hike
-FOR EACH ROW
-DECLARE
-    salary_limit_exceeded EXCEPTION;
+CREATE OR REPLACE FUNCTION check_salary_hike()
+RETURNS TRIGGER AS $$
 BEGIN
-    IF :NEW.salary > :OLD.salary * 1.15 THEN
-        RAISE salary_limit_exceeded;
+    IF NEW.salary > OLD.salary * 1.15 THEN
+        RAISE EXCEPTION
+            'Error: Salary increase cannot exceed 15%% of the old salary.';
     END IF;
 
-EXCEPTION
-    WHEN salary_limit_exceeded THEN
-        RAISE_APPLICATION_ERROR(
-            -20001,
-            'Error: Salary increase cannot exceed 15% of the old salary.'
-        );
+    RETURN NEW;
 END;
-/
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_check_salary_hike
+BEFORE UPDATE OF salary ON Salary_Hike
+FOR EACH ROW
+EXECUTE FUNCTION check_salary_hike();
